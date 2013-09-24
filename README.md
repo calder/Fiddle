@@ -1,4 +1,2 @@
-fiddle
+Fiddle
 ======
-
-Go bitstring library
