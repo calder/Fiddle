@@ -59,7 +59,7 @@ func (bits *Bits) String () string {
     s := ""
     for i := 0; i < len(bits.dat); i++ {
         if i > 0 { s += " " }
-        for j := uint(0); i*8+int(j)<bits.len; j++ {
+        for j := uint(0); 8*i+int(j) < min(bits.len, 8*(i+1)); j++ {
             if bits.dat[i] >> (7-j) & 1 == 0 { s += "0" } else { s += "1" }
         }
     }
@@ -94,7 +94,7 @@ func (bits *Bits) FromTo (start int, end int) *Bits {
     shift := uint(start % 8)
     if shift > 0 {
         for i := 0; i < len(b.dat)-1; i++ {
-            b.dat[i] = (b.dat[i] << shift) | (b.dat[i+1] >> uint(8-shift))
+            b.dat[i] = (b.dat[i] << shift) | (b.dat[i+1] >> (8-shift))
         }
         b.dat[len(b.dat)-1] = b.dat[len(b.dat)-1] << shift
     }
@@ -117,18 +117,22 @@ func (bits *Bits) Equal (other *Bits) bool {
 }
 
 func (bits *Bits) Plus (other *Bits) *Bits {
-    // // Byte splicing
-    // b := &Bits{append(bits.dat, other.dat...), bits.len + other.len}
+    // Byte splicing
+    b := &Bits{append(bits.dat, other.dat...), bits.len + other.len}
 
-    // // Bit shifting
-    // shift := uint(start % 8)
-    // if shift > 0 {
-    //     for i := len(); i < len(b.dat)-1; i++ {
-    //         b.dat[i] = (b.dat[i] << shift) | (b.dat[i+1] >> uint(8-shift))
-    //     }
-    //     b.dat[len(b.dat)-1] = b.dat[len(b.dat)-1] << shift
-    // }
-    return &Bits{append(bits.dat, other.dat...), bits.len + other.len}
+    // Bit shifting
+    shift := uint(8 - bits.len%8)
+    if shift != 8 {
+        b.dat[len(bits.dat)-1] |= b.dat[len(bits.dat)] >> (8-shift)
+        for i := len(bits.dat); i < len(b.dat)-1; i++ {
+            b.dat[i] = (b.dat[i] << shift) | (b.dat[i+1] >> (8-shift))
+        }
+        b.dat[len(b.dat)-1] <<= shift
+    }
+
+    if b.len + other.len < 8 { b.dat = b.dat[:len(b.dat)-1] }
+
+    return b
 }
 
 /*****************************
@@ -156,7 +160,6 @@ func (bits *Bits) Unicode () string {
 ***************************/
 
 // func (bits *Bits) Chunks (num int) chunks []*Bits, err error {
-    
 // }
 
 /******************
