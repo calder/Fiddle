@@ -2,6 +2,7 @@ package fiddle
 
 import "bytes"
 import "encoding/hex"
+import "errors"
 import "strconv"
 import "strings"
 
@@ -72,6 +73,10 @@ func (bits *Bits) HexString () string {
     return hex.EncodeToString(bits.dat) + chop
 }
 
+func (bits *Bits) RawString () string {
+    return strings.Replace(bits.String(), " ", "", -1)
+}
+
 /*************************
 ***   Splice Methods   ***
 *************************/
@@ -85,27 +90,32 @@ func (bits *Bits) From (start int) *Bits {
 }
 
 func (bits *Bits) FromTo (start int, end int) *Bits {
+    // Error checking
+    println(bits.len)
+    if start < 0 || start > bits.len { panic(errors.New("Start index "+strconv.Itoa(start)+" out of range.")) }
+    if end < start || end > bits.len { panic(errors.New("End index "+strconv.Itoa(end)+" out of range.")) }
+    if start == end { return &Bits{make([]byte,0), 0} }
+
     // Byte splicing
-    start = min(max(start, 0    ), bits.len)
-    end   = min(max(end  , start), bits.len)
-    b := &Bits{bits.dat[start/8:(end+7)/8], end-start}
+    dat := make([]byte, (end-start+7)/8)
+    copy(dat, bits.dat[start/8:(end+7)/8])
 
     // Bit shifting
     shift := uint(start % 8)
     if shift > 0 {
-        for i := 0; i < len(b.dat)-1; i++ {
-            b.dat[i] = (b.dat[i] << shift) | (b.dat[i+1] >> (8-shift))
+        for i := 0; i < len(dat)-1; i++ {
+            dat[i] = (dat[i] << shift) | (dat[i+1] >> (8-shift))
         }
-        b.dat[len(b.dat)-1] = b.dat[len(b.dat)-1] << shift
+        dat[len(dat)-1] <<= shift
     }
 
     // Bit chopping
     chop := uint(8 - (end-start) % 8)
-    if chop > 0 {
-        b.dat[len(b.dat)-1] = b.dat[len(b.dat)-1] & (byte(0xFF) << chop)
+    if chop != 8 {
+        dat[len(dat)-1] = dat[len(dat)-1] & (byte(0xFF) << chop)
     }
 
-    return b
+    return &Bits{dat, end-start}
 }
 
 /********************
@@ -128,9 +138,8 @@ func (bits *Bits) Plus (other *Bits) *Bits {
             b.dat[i] = (b.dat[i] << shift) | (b.dat[i+1] >> (8-shift))
         }
         b.dat[len(b.dat)-1] <<= shift
+        if b.len + other.len < 8 { b.dat = b.dat[:len(b.dat)-1] }
     }
-
-    if b.len + other.len < 8 { b.dat = b.dat[:len(b.dat)-1] }
 
     return b
 }
@@ -151,6 +160,14 @@ func (bits *Bits) Hex () string {
     return hex.EncodeToString(bits.dat)
 }
 
+func (bits *Bits) Int () int {
+    s := bits.RawString()
+    if s == "" { s = "0" }
+    x, e := strconv.ParseInt(s, 2,32)
+    if e != nil { panic(e) }
+    return int(x)
+}
+
 func (bits *Bits) Unicode () string {
     return string(bits.dat)
 }
@@ -159,8 +176,18 @@ func (bits *Bits) Unicode () string {
 ***   Decoding Methods   ***
 ***************************/
 
-// func (bits *Bits) Chunks (num int) chunks []*Bits, err error {
-// }
+func (bits *Bits) Chunks (num int) (chunks []*Bits, err error) {
+    head := 0
+    chunks = make([]*Bits, num)
+    for i := 0; i < num-1; i++ {
+        s, e, err := bits.chunkBounds(head)
+        if err != nil { return nil, err }
+        chunks[i] = bits.FromTo(s, e)
+        head = e
+    }
+    chunks[num-1] = bits.From(head)
+    return chunks, nil
+}
 
 /******************
 ***   Private   ***
@@ -174,8 +201,16 @@ func max (x int, y int) int {
     if x > y { return x } else { return y }
 }
 
-func parseBinByte (b string) byte {
-    x, e := strconv.ParseUint(b, 2, 8)
-    if e != nil { panic(e) }
-    return byte(x)
+func (bits *Bits) chunkBounds (head int) (start int, end int, err error) {
+    if head+3 > bits.len { return 0, 0, errors.New("Decoding error: chunk header index "+strconv.Itoa(head+3)+" out of range.") }
+
+    hl := 1 >> 1 << uint(bits.FromTo(head, head+3).Int())
+    if head+3+hl > bits.len { return 0, 0, errors.New("Decoding error: chunk start index "+strconv.Itoa(head+3+hl)+" out of range.") }
+
+    println("asdf", hl)
+    l := bits.FromTo(head+3, head+3+hl).Int()
+    if head+3+hl+l > bits.len { return 0, 0, errors.New("Decoding error: chunk end index "+strconv.Itoa(head+3+hl+hl)+" out of range.") }
+
+    println("asdf", hl, l)
+    return head+3+hl, head+3+hl+l, nil
 }
