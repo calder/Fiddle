@@ -49,6 +49,13 @@ func FromBin (s string) *Bits {
     return b
 }
 
+func FromChoppedBytes (b []byte) *Bits {
+    if len(b) == 0 { panic(errors.New("Decoding error: first byte of chopped bytes must contain chop length")) }
+    if len(b) == 1 && b[0] != 0 { panic(errors.New("Decoding error: chop length exceeds content length")) }
+    if b[0] > 7 { panic(errors.New("Decoding error: chop length exceeds 8")) }
+    return &Bits{b, 8*len(b)-int(b[0])}
+}
+
 func FromChunks (chunks []*Bits) *Bits {
     if len(chunks) == 0 { return Nil() }
     b := Nil()
@@ -103,11 +110,11 @@ func (bits *Bits) HexString () string {
 }
 
 func (bits *Bits) PadLeft (length int) *Bits {
-    if bits.len > length { panic(errors.New("Too big to pad!")) }
+    if bits.len > length { return bits }
     return FromBin(strings.Repeat("0", length-bits.len)).Plus(bits)
 }
 
-func (bits *Bits) RawString () string {
+func (bits *Bits) BitString () string {
     return strings.Replace(bits.String(), " ", "", -1)
 }
 
@@ -125,8 +132,8 @@ func (bits *Bits) From (start int) *Bits {
 
 func (bits *Bits) FromTo (start int, end int) *Bits {
     // Error checking
-    if start < 0 || start > bits.len { panic(errors.New("Start index "+strconv.Itoa(start)+" out of range.")) }
-    if end < start || end > bits.len { panic(errors.New("End index "+strconv.Itoa(end)+" out of range.")) }
+    if start < 0 || start > bits.len { panic(errors.New("Start index "+strconv.Itoa(start)+" out of range")) }
+    if end < start || end > bits.len { panic(errors.New("End index "+strconv.Itoa(end)+" out of range")) }
     if start == end { return &Bits{make([]byte,0), 0} }
 
     // Byte splicing
@@ -176,7 +183,7 @@ func (bits *Bits) Plus (other *Bits) *Bits {
             b.dat[i] = (b.dat[i] << shift) | (b.dat[i+1] >> (8-shift))
         }
         b.dat[len(b.dat)-1] <<= shift
-        if b.len + other.len < 8 { b.dat = b.dat[:len(b.dat)-1] }
+        b.dat = b.dat[:(b.len+7)/8]
     }
 
     return b
@@ -199,9 +206,9 @@ func (bits *Bits) Hex () string {
 }
 
 func (bits *Bits) Int () int {
-    s := bits.RawString()
+    s := bits.BitString()
     if s == "" { s = "0" }
-    x, e := strconv.ParseInt(s, 2,32)
+    x, e := strconv.ParseInt(s, 2, 64)
     if e != nil { panic(e) }
     return int(x)
 }
@@ -240,33 +247,36 @@ func max (x int, y int) int {
 }
 
 func ceil2 (x int) int {
-    for y := uint(0); y < 32; y++ {
+    for y := uint(0); y < 63; y++ {
         if 1 << y >= x { return 1 << y }
     }
     return -1
 }
 
 func log2 (x int) int {
-    for y := 31; y >= 0; y-- {
+    for y := 62; y >= 0; y-- {
         if (x >> uint(y)) % 2 == 1 { return y }
     }
     return -1
 }
 
 func (bits *Bits) readHeader (head int) (start int, end int, err error) {
-    if head+3 > bits.len { return 0, 0, errors.New("Decoding error: chunk header index "+strconv.Itoa(head+3)+" out of range.") }
+    if head+4 > bits.len { return 0, 0, errors.New("Decoding error: chunk header index "+strconv.Itoa(head+4)+" out of range") }
 
-    hl := 1 << uint(bits.FromTo(head, head+3).Int()) >> 1
-    if head+3+hl > bits.len { return 0, 0, errors.New("Decoding error: chunk start index "+strconv.Itoa(head+3+hl)+" out of range.") }
+    hl := 1 << uint(bits.FromTo(head, head+4).Int()) >> 1
+    println("OMFG         ", bits.FromTo(head, head+4).String(), uint(bits.FromTo(head, head+4).Int()), hl)
+    if head+4+hl > bits.len { return 0, 0, errors.New("Decoding error: chunk start index "+strconv.Itoa(head+4+hl)+" out of range") }
 
-    l := bits.FromTo(head+3, head+3+hl).Int()
-    if head+3+hl+l > bits.len { return 0, 0, errors.New("Decoding error: chunk end index "+strconv.Itoa(head+3+hl+l)+" out of range.") }
+    l := bits.FromTo(head+4, head+4+hl).Int()
+    println("WTF          ", bits.FromTo(head+4, head+4+hl).String(), bits.FromTo(head+4, head+4+hl).Int(), l)
+    if head+4+hl+l > bits.len { return 0, 0, errors.New("Decoding error: chunk end index "+strconv.Itoa(head+4+hl+l)+" out of range") }
 
-    return head+3+hl, head+3+hl+l, nil
+    return head+4+hl, head+4+hl+l, nil
 }
 
 func createHeader (length int) *Bits {
-    if length < 0 { panic(errors.New("Encoding error: negative length.")) }
-    hl := log2(length) + 1
-    return FromInt(hl).PadLeft(3).Plus(FromInt(length).PadLeft(1 << uint(hl) >> 1))
+    if length < 0 { panic(errors.New("Encoding error: negative length")) }
+    hl := log2(ceil2(length))
+    println(length, hl, log2(ceil2(hl)), FromInt(log2(ceil2(hl))+1).PadLeft(4).String(), ceil2(hl), FromInt(length).PadLeft(ceil2(hl)).String())
+    return FromInt(log2(ceil2(hl))+1).PadLeft(4).Plus(FromInt(length).PadLeft(ceil2(hl)))
 }
