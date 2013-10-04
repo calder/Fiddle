@@ -65,6 +65,15 @@ func FromChunks (chunks []*Bits) *Bits {
     return b.Plus(chunks[len(chunks)-1])
 }
 
+func FromList (list []*Bits) *Bits {
+    if len(list) == 0 { return Nil() }
+    b := Nil()
+    for i := range list[:len(list)] {
+        b = b.Plus(createHeader(list[i].len)).Plus(list[i])
+    }
+    return b
+}
+
 func FromHex (s string) *Bits {
     b, e := hex.DecodeString(s)
     if e != nil { panic(e) }
@@ -193,6 +202,17 @@ func (bits *Bits) Chunks (num int) (chunks []*Bits, err error) {
     }
     chunks[num-1] = bits.From(head)
     return chunks, nil
+}
+
+func (bits *Bits) List () (list []*Bits, err error) {
+    list = []*Bits{}
+    for head := 0; head < bits.len; {
+        s, e, err := bits.readHeader(head)
+        if err != nil { return nil, err }
+        list = append(list, bits.FromTo(s, e))
+        head = e
+    }
+    return list, nil
 }
 
 /******************
