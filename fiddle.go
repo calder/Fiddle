@@ -232,11 +232,9 @@ func (bits *Bits) readHeader (head int) (start int, end int, err error) {
     if head+4 > bits.len { return 0, 0, errors.New("Decoding error: chunk header index "+strconv.Itoa(head+4)+" out of range") }
 
     hl := 1 << uint(bits.FromTo(head, head+4).Int()) >> 1
-    println("OMFG         ", bits.FromTo(head, head+4).String(), uint(bits.FromTo(head, head+4).Int()), hl)
     if head+4+hl > bits.len { return 0, 0, errors.New("Decoding error: chunk start index "+strconv.Itoa(head+4+hl)+" out of range") }
 
     l := bits.FromTo(head+4, head+4+hl).Int()
-    println("WTF          ", bits.FromTo(head+4, head+4+hl).String(), bits.FromTo(head+4, head+4+hl).Int(), l)
     if head+4+hl+l > bits.len { return 0, 0, errors.New("Decoding error: chunk end index "+strconv.Itoa(head+4+hl+l)+" out of range") }
 
     return head+4+hl, head+4+hl+l, nil
@@ -245,13 +243,13 @@ func (bits *Bits) readHeader (head int) (start int, end int, err error) {
 func createHeader (length int) *Bits {
     if length < 0 { panic(errors.New("Encoding error: negative length")) }
 
-    # The number of bits needed to encode the length
+    // The number of bits needed to encode the length
     headerLength := numBits(length)
 
-    # The number of bits which will actually be used to encode the length
+    // The number of bits which will actually be used to encode the length
     paddedHeaderLength := ceil2(headerLength)
 
-    # The power-of-2 (+1 because 0 means 0 length) encoding of the header length
+    // The log-plus-1 encoding (where 0 means 0 length) of the header length
     headerSize := log2(paddedHeaderLength) + 1
 
     return FromInt(headerSize).PadLeft(4).Plus(FromInt(length).PadLeft(paddedHeaderLength))

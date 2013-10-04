@@ -72,7 +72,6 @@ func TestChunks (t *testing.T) {
         c     := []*Bits{randBits(), randBits(), randBits()}
         c2    := FromChunks(c)
         c3, e := c2.Chunks(3)
-        println(c[0].String())
 
         if  e != nil ||
         !c3[0].Equal(c[0]) ||
