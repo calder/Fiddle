@@ -33,13 +33,13 @@ func TestPlus (t *testing.T) {
         x  := randBits()
         y  := randBits()
         z  := x.Plus(y)
-        z2 := FromBin(x.BitString() + y.BitString())
+        z2 := FromBin(x.Bin() + y.Bin())
 
         if !z2.Equal(z) {
-            t.Log("First:   ", x.BitString())
-            t.Log("Second:  ", y.BitString())
-            t.Log("Expected:", z.BitString())
-            t.Log("Got:     ", z2.BitString())
+            t.Log("First:   ", x.Bin())
+            t.Log("Second:  ", y.Bin())
+            t.Log("Expected:", z.Bin())
+            t.Log("Got:     ", z2.Bin())
             t.FailNow()
         }
     }
@@ -48,10 +48,14 @@ func TestPlus (t *testing.T) {
 func TestFromTo (t *testing.T) {
     for i := 0; i < 1000; i++ {
         x  := randBits()
-        s  := rand.Intn(x.Len())
-        l  := rand.Intn(x.Len()-s)
-        y  := x.BitString()[s:s+l]
-        y2 := x.FromTo(s, s+l).BitString()
+        s  := 0
+        l  := 0
+        if x.Len() > 0 {
+            s = rand.Intn(x.Len())
+            l = rand.Intn(x.Len()-s)
+        }
+        y  := x.Bin()[s:s+l]
+        y2 := x.FromTo(s, s+l).Bin()
         if y2 != y {
             t.Log("Original:", x)
             t.Log("Start:   ", s)
@@ -63,22 +67,26 @@ func TestFromTo (t *testing.T) {
     }
 }
 
-// func TestChunks (t *testing.T) {
-//     for i := 0; i < 1000; i++ {
-//         c     := []*Bits{randBits(), randBits(), randBits()}
-//         c2    := FromChunks(c)
-//         c3, e := c2.Chunks(3)
-//         println(c[0].String())
+func TestChunks (t *testing.T) {
+    for i := 0; i < 1000; i++ {
+        c     := []*Bits{randBits(), randBits(), randBits()}
+        c2    := FromChunks(c)
+        c3, e := c2.Chunks(3)
+        println(c[0].String())
 
-//         if e != nil || c3[0] != c[0] || c3[1] != c[1] || c3[2] != c[2] {
-//             t.Log("Chunk 0:  ", c[0].BitString())
-//             t.Log("Chunk 1:  ", c[1].BitString())
-//             t.Log("Chunk 2:  ", c[2].BitString())
-//             t.Log("Encoded:  ", c2.BitString())
-//             t.Log("Decoded 0:", c3[0].BitString())
-//             t.Log("Decoded 1:", c3[1].BitString())
-//             t.Log("Decoded 2:", c3[2].BitString())
-//             t.FailNow()
-//         }
-//     }
-// }
+        if  e != nil ||
+        !c3[0].Equal(c[0]) ||
+        !c3[1].Equal(c[1]) ||
+        !c3[2].Equal(c[2]) {
+            t.Log("Chunk 0:  ", c[0].Bin())
+            t.Log("Chunk 1:  ", c[1].Bin())
+            t.Log("Chunk 2:  ", c[2].Bin())
+            t.Log("Encoded:  ", c2.Bin())
+            t.Log("Error:    ", e)
+            t.Log("Decoded 0:", c3[0].Bin())
+            t.Log("Decoded 1:", c3[1].Bin())
+            t.Log("Decoded 2:", c3[2].Bin())
+            t.FailNow()
+        }
+    }
+}

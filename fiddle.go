@@ -114,8 +114,12 @@ func (bits *Bits) PadLeft (length int) *Bits {
     return FromBin(strings.Repeat("0", length-bits.len)).Plus(bits)
 }
 
-func (bits *Bits) BitString () string {
-    return strings.Replace(bits.String(), " ", "", -1)
+func (bits *Bits) Bin () string {
+    b := make([]byte, bits.len)
+    for i := 0; i < bits.len; i++ {
+        if bits.dat[i/8] & (1 << uint(7-i%8)) == 0 { b[i] = '0' } else { b[i] = '1' }
+    }
+    return string(b)
 }
 
 /*************************
@@ -131,31 +135,7 @@ func (bits *Bits) From (start int) *Bits {
 }
 
 func (bits *Bits) FromTo (start int, end int) *Bits {
-    // Error checking
-    if start < 0 || start > bits.len { panic(errors.New("Start index "+strconv.Itoa(start)+" out of range")) }
-    if end < start || end > bits.len { panic(errors.New("End index "+strconv.Itoa(end)+" out of range")) }
-    if start == end { return &Bits{make([]byte,0), 0} }
-
-    // Byte splicing
-    dat := make([]byte, (end-start+7)/8)
-    copy(dat, bits.dat[start/8:(end+7)/8])
-
-    // Bit shifting
-    shift := uint(start % 8)
-    if shift > 0 {
-        for i := 0; i < len(dat)-1; i++ {
-            dat[i] = (dat[i] << shift) | (dat[i+1] >> (8-shift))
-        }
-        dat[len(dat)-1] <<= shift
-    }
-
-    // Bit chopping
-    chop := uint(8 - (end-start) % 8)
-    if chop != 8 {
-        dat[len(dat)-1] = dat[len(dat)-1] & (byte(0xFF) << chop)
-    }
-
-    return &Bits{dat, end-start}
+    return FromBin(bits.Bin()[start:end])
 }
 
 /********************
@@ -167,26 +147,7 @@ func (bits *Bits) Equal (other *Bits) bool {
 }
 
 func (bits *Bits) Plus (other *Bits) *Bits {
-    if bits.len == 0 { return other }
-    if other.len == 0 { return bits }
-
-    // Byte splicing
-    b := &Bits{make([]byte, len(bits.dat)+len(other.dat)), bits.len + other.len}
-    copy(b.dat[:len(bits.dat)], bits.dat)
-    copy(b.dat[len(bits.dat):], other.dat)
-
-    // Bit shifting
-    shift := uint(8 - bits.len%8)
-    if shift != 8 {
-        b.dat[len(bits.dat)-1] |= b.dat[len(bits.dat)] >> (8-shift)
-        for i := len(bits.dat); i < len(b.dat)-1; i++ {
-            b.dat[i] = (b.dat[i] << shift) | (b.dat[i+1] >> (8-shift))
-        }
-        b.dat[len(b.dat)-1] <<= shift
-        b.dat = b.dat[:(b.len+7)/8]
-    }
-
-    return b
+    return FromBin(bits.Bin() + other.Bin())
 }
 
 /*****************************
@@ -206,7 +167,7 @@ func (bits *Bits) Hex () string {
 }
 
 func (bits *Bits) Int () int {
-    s := bits.BitString()
+    s := bits.Bin()
     if s == "" { s = "0" }
     x, e := strconv.ParseInt(s, 2, 64)
     if e != nil { panic(e) }
@@ -260,6 +221,13 @@ func log2 (x int) int {
     return -1
 }
 
+func numBits (x int) int {
+    for y := 62; y >= 0; y-- {
+        if (x >> uint(y)) & 1 == 1 { return y+1 }
+    }
+    return -1
+}
+
 func (bits *Bits) readHeader (head int) (start int, end int, err error) {
     if head+4 > bits.len { return 0, 0, errors.New("Decoding error: chunk header index "+strconv.Itoa(head+4)+" out of range") }
 
@@ -276,7 +244,15 @@ func (bits *Bits) readHeader (head int) (start int, end int, err error) {
 
 func createHeader (length int) *Bits {
     if length < 0 { panic(errors.New("Encoding error: negative length")) }
-    hl := log2(ceil2(length))
-    println(length, hl, log2(ceil2(hl)), FromInt(log2(ceil2(hl))+1).PadLeft(4).String(), ceil2(hl), FromInt(length).PadLeft(ceil2(hl)).String())
-    return FromInt(log2(ceil2(hl))+1).PadLeft(4).Plus(FromInt(length).PadLeft(ceil2(hl)))
+
+    # The number of bits needed to encode the length
+    headerLength := numBits(length)
+
+    # The number of bits which will actually be used to encode the length
+    paddedHeaderLength := ceil2(headerLength)
+
+    # The power-of-2 (+1 because 0 means 0 length) encoding of the header length
+    headerSize := log2(paddedHeaderLength) + 1
+
+    return FromInt(headerSize).PadLeft(4).Plus(FromInt(length).PadLeft(paddedHeaderLength))
 }
