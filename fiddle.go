@@ -227,20 +227,6 @@ func max (x int, y int) int {
     if x > y { return x } else { return y }
 }
 
-func ceil2 (x int) int {
-    for y := uint(0); y < 63; y++ {
-        if 1 << y >= x { return 1 << y }
-    }
-    return -1
-}
-
-func log2 (x int) int {
-    for y := 62; y >= 0; y-- {
-        if (x >> uint(y)) % 2 == 1 { return y }
-    }
-    return -1
-}
-
 func numBits (x int) int {
     for y := 62; y >= 0; y-- {
         if (x >> uint(y)) & 1 == 1 { return y+1 }
