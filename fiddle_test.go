@@ -74,7 +74,7 @@ func TestChunks (t *testing.T) {
         c2    := FromChunks(c)
         c3, e := c2.Chunks(3)
 
-        if  e != nil ||
+        if e != nil ||
         !c3[0].Equal(c[0]) ||
         !c3[1].Equal(c[1]) ||
         !c3[2].Equal(c[2]) {
@@ -97,7 +97,7 @@ func TestList (t *testing.T) {
         c2    := FromList(c)
         c3, e := c2.List()
 
-        if  e != nil ||
+        if e != nil ||
         !c3[0].Equal(c[0]) ||
         !c3[1].Equal(c[1]) ||
         !c3[2].Equal(c[2]) {
@@ -109,6 +109,21 @@ func TestList (t *testing.T) {
             t.Log("Decoded 0:", c3[0].Bin())
             t.Log("Decoded 1:", c3[1].Bin())
             t.Log("Decoded 2:", c3[2].Bin())
+            t.FailNow()
+        }
+    }
+}
+
+func TestByte (t *testing.T) {
+    for i := 0; i < 1000; i++ {
+        x  := randBits()
+        b  := x.Bytes()
+        x2 := FromBytes(b)
+
+        if !x2.Equal(x) {
+            t.Log("Original:", x)
+            t.Log("Encoded: ", b)
+            t.Log("Decoded: ", x2)
             t.FailNow()
         }
     }

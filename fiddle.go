@@ -36,7 +36,10 @@ func FromByte (b byte) *Bits {
 }
 
 func FromBytes (b []byte) *Bits {
-    return &Bits{b, 8*len(b)}
+    if len(b) == 0 { panic(errors.New("Decoding error: missing chop byte")) }
+    if len(b) == 1 && b[0] != 0 { panic(errors.New("Decoding error: chop byte  exceeds content length")) }
+    if b[0] > 7 { panic(errors.New("Decoding error: chop byte greater than 7")) }
+    return &Bits{b[1:], 8*len(b)-8-int(b[0])}
 }
 
 func FromBin (s string) *Bits {
@@ -47,13 +50,6 @@ func FromBin (s string) *Bits {
         if s[i] == '1' { b.dat[i/8] |= 1 << uint(7-i%8) }
     }
     return b
-}
-
-func FromChoppedBytes (b []byte) *Bits {
-    if len(b) == 0 { panic(errors.New("Decoding error: first byte of chopped bytes must contain chop length")) }
-    if len(b) == 1 && b[0] != 0 { panic(errors.New("Decoding error: chop length exceeds content length")) }
-    if b[0] > 7 { panic(errors.New("Decoding error: chop length exceeds 8")) }
-    return &Bits{b, 8*len(b)-int(b[0])}
 }
 
 func FromChunks (chunks []*Bits) *Bits {
@@ -77,6 +73,7 @@ func FromList (list []*Bits) *Bits {
 func FromHex (s string) *Bits {
     b, e := hex.DecodeString(s)
     if e != nil { panic(e) }
+    b = append([]byte{0}, b...)
     return FromBytes(b)
 }
 
@@ -113,8 +110,8 @@ func (bits *Bits) String () string {
 }
 
 func (bits *Bits) HexString () string {
-    chop := "-" + strconv.Itoa(8 - bits.len%8)
-    if chop == "-8" { chop = "" }
+    chop := "-" + strconv.Itoa(invRemainder(bits.len, 8))
+    if chop == "-0" { chop = "" }
     return hex.EncodeToString(bits.dat) + chop
 }
 
@@ -168,7 +165,7 @@ func (bits *Bits) Byte () byte {
 }
 
 func (bits *Bits) Bytes () []byte {
-    return bits.dat
+    return append([]byte{byte(invRemainder(bits.len, 8))}, bits.dat...)
 }
 
 func (bits *Bits) Hex () string {
@@ -225,6 +222,10 @@ func min (x int, y int) int {
 
 func max (x int, y int) int {
     if x > y { return x } else { return y }
+}
+
+func invRemainder (x int, y int) int {
+    return (y - x%y) % y
 }
 
 func numBits (x int) int {
