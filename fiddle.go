@@ -82,7 +82,7 @@ func FromHex (s string) *Bits {
 
 func FromInt (x int) *Bits {
     s := ""
-    for d := log2(x); d >= 0; d-- {
+    for d := numBits(x)-1; d >= 0; d-- {
         if (x >> uint(d)) % 2 == 0 { s += "0" } else { s += "1" }
     }
     return FromBin(s)
@@ -245,32 +245,23 @@ func numBits (x int) int {
     for y := 62; y >= 0; y-- {
         if (x >> uint(y)) & 1 == 1 { return y+1 }
     }
-    return -1
+    return 0
 }
 
 func (bits *Bits) readHeader (head int) (start int, end int, err error) {
-    if head+4 > bits.len { return 0, 0, errors.New("Decoding error: chunk header index "+strconv.Itoa(head+4)+" out of range") }
+    if head+8 > bits.len { return 0, 0, errors.New("Decoding error: chunk header index "+strconv.Itoa(head+8)+" out of range") }
 
-    hl := 1 << uint(bits.FromTo(head, head+4).Int()) >> 1
-    if head+4+hl > bits.len { return 0, 0, errors.New("Decoding error: chunk start index "+strconv.Itoa(head+4+hl)+" out of range") }
+    hl := bits.FromTo(head, head+8).Int()
+    if head+8+hl > bits.len { return 0, 0, errors.New("Decoding error: chunk start index "+strconv.Itoa(head+8+hl)+" out of range") }
 
-    l := bits.FromTo(head+4, head+4+hl).Int()
-    if head+4+hl+l > bits.len { return 0, 0, errors.New("Decoding error: chunk end index "+strconv.Itoa(head+4+hl+l)+" out of range") }
+    l := bits.FromTo(head+8, head+8+hl).Int()
+    if head+8+hl+l > bits.len { return 0, 0, errors.New("Decoding error: chunk end index "+strconv.Itoa(head+8+hl+l)+" out of range") }
 
-    return head+4+hl, head+4+hl+l, nil
+    return head+8+hl, head+8+hl+l, nil
 }
 
 func createHeader (length int) *Bits {
     if length < 0 { panic(errors.New("Encoding error: negative length")) }
-
-    // The number of bits needed to encode the length
-    headerLength := numBits(length)
-
-    // The number of bits which will actually be used to encode the length
-    paddedHeaderLength := ceil2(headerLength)
-
-    // The log-plus-1 encoding (where 0 means 0 length) of the header length
-    headerSize := log2(paddedHeaderLength) + 1
-
-    return FromInt(headerSize).PadLeft(4).Plus(FromInt(length).PadLeft(paddedHeaderLength))
+    if length > 255 { panic(errors.New("Encoding error: that's just too fucking long")) }
+    return FromInt(numBits(length)).PadLeft(8).Plus(FromInt(length))
 }

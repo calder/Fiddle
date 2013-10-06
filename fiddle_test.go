@@ -56,6 +56,7 @@ func TestFromTo (t *testing.T) {
         }
         y  := x.Bin()[s:s+l]
         y2 := x.FromTo(s, s+l).Bin()
+        
         if y2 != y {
             t.Log("Original:", x)
             t.Log("Start:   ", s)
