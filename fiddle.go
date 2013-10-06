@@ -42,6 +42,10 @@ func FromBytes (b []byte) *Bits {
     return &Bits{b[1:], 8*len(b)-8-int(b[0])}
 }
 
+func FromRawBytes (b []byte) *Bits {
+    return &Bits{b, 8*len(b)}
+}
+
 func FromBin (s string) *Bits {
     s = strings.Replace(s, " ", "", -1)
     l := (len(s)+7) / 8
@@ -166,6 +170,10 @@ func (bits *Bits) Byte () byte {
 
 func (bits *Bits) Bytes () []byte {
     return append([]byte{byte(invRemainder(bits.len, 8))}, bits.dat...)
+}
+
+func (bits *Bits) RawBytes () []byte {
+    return bits.dat
 }
 
 func (bits *Bits) Hex () string {
