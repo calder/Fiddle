@@ -56,7 +56,7 @@ func FromBin (s string) *Bits {
     return b
 }
 
-func FromChunks (chunks []*Bits) *Bits {
+func FromChunks (chunks ...*Bits) *Bits {
     if len(chunks) == 0 { return Nil() }
     b := Nil()
     for i := range chunks[:len(chunks)-1] {
@@ -196,17 +196,17 @@ func (bits *Bits) Unicode () string {
 ***   Decoding Methods   ***
 ***************************/
 
-func (bits *Bits) Chunks (num int) (chunks []*Bits, err error) {
+func (bits *Bits) Chunks (num int) []*Bits {
     head := 0
-    chunks = make([]*Bits, num)
+    chunks := make([]*Bits, num)
     for i := 0; i < num-1; i++ {
         s, e, err := bits.readHeader(head)
-        if err != nil { return nil, err }
+        if err != nil { panic(err) }
         chunks[i] = bits.FromTo(s, e)
         head = e
     }
     chunks[num-1] = bits.From(head)
-    return chunks, nil
+    return chunks
 }
 
 func (bits *Bits) List () (list []*Bits, err error) {
