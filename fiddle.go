@@ -36,10 +36,9 @@ func FromByte (b byte) *Bits {
 }
 
 func FromBytes (b []byte) *Bits {
-    if len(b) == 0 { panic(errors.New("Decoding error: missing chop byte")) }
-    if len(b) == 1 && b[0] != 0 { panic(errors.New("Decoding error: chop byte  exceeds content length")) }
-    if b[0] > 7 { panic(errors.New("Decoding error: chop byte greater than 7")) }
-    return &Bits{b[1:], 8*len(b)-8-int(b[0])}
+    if len(b) == 0 { return Nil() }
+    chop := (5 + FromByte(b[0]).To(3).Int()) % 8
+    return FromRawBytes(b).FromTo(3, 8*len(b)-chop)
 }
 
 func FromRawBytes (b []byte) *Bits {
@@ -169,7 +168,7 @@ func (bits *Bits) Byte () byte {
 }
 
 func (bits *Bits) Bytes () []byte {
-    return append([]byte{byte(invRemainder(bits.len, 8))}, bits.dat...)
+    return FromInt(invRemainder(bits.len, 8)).PadLeft(3).Plus(bits).dat
 }
 
 func (bits *Bits) RawBytes () []byte {
