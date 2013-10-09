@@ -76,8 +76,13 @@ func FromList (list []*Bits) *Bits {
 func FromHex (s string) *Bits {
     b, e := hex.DecodeString(s)
     if e != nil { panic(e) }
-    b = append([]byte{0}, b...)
     return FromBytes(b)
+}
+
+func FromRawHex (s string) *Bits {
+    b, e := hex.DecodeString(s)
+    if e != nil { panic(e) }
+    return FromRawBytes(b)
 }
 
 func FromInt (x int) *Bits {
@@ -112,23 +117,9 @@ func (bits *Bits) String () string {
     return s
 }
 
-func (bits *Bits) HexString () string {
-    chop := "-" + strconv.Itoa(invRemainder(bits.len, 8))
-    if chop == "-0" { chop = "" }
-    return hex.EncodeToString(bits.dat) + chop
-}
-
 func (bits *Bits) PadLeft (length int) *Bits {
     if bits.len > length { return bits }
     return FromBin(strings.Repeat("0", length-bits.len)).Plus(bits)
-}
-
-func (bits *Bits) Bin () string {
-    b := make([]byte, bits.len)
-    for i := 0; i < bits.len; i++ {
-        if bits.dat[i/8] & (1 << uint(7-i%8)) == 0 { b[i] = '0' } else { b[i] = '1' }
-    }
-    return string(b)
 }
 
 /*************************
@@ -167,6 +158,14 @@ func (bits *Bits) Byte () byte {
     return bits.dat[0]
 }
 
+func (bits *Bits) Bin () string {
+    b := make([]byte, bits.len)
+    for i := 0; i < bits.len; i++ {
+        if bits.dat[i/8] & (1 << uint(7-i%8)) == 0 { b[i] = '0' } else { b[i] = '1' }
+    }
+    return string(b)
+}
+
 func (bits *Bits) Bytes () []byte {
     return FromInt(invRemainder(bits.len, 8)).PadLeft(3).Plus(bits).dat
 }
@@ -176,6 +175,10 @@ func (bits *Bits) RawBytes () []byte {
 }
 
 func (bits *Bits) Hex () string {
+    return hex.EncodeToString(bits.Bytes())
+}
+
+func (bits *Bits) RawHex () string {
     return hex.EncodeToString(bits.dat)
 }
 

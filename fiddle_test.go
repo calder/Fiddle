@@ -68,6 +68,49 @@ func TestFromTo (t *testing.T) {
     }
 }
 
+func TestBytes (t *testing.T) {
+    for i := 0; i < 1000; i++ {
+        x  := randBits()
+        b  := x.Bytes()
+        x2 := FromBytes(b)
+
+        if !x2.Equal(x) {
+            t.Log("Original:", x)
+            t.Log("Encoded: ", b)
+            t.Log("Decoded: ", x2)
+            t.FailNow()
+        }
+    }
+}
+
+func TestHex (t *testing.T) {
+    for i := 0; i < 1000; i++ {
+        b  := randBits()
+        b2 := FromHex(b.Hex())
+
+        if !b2.Equal(b) {
+            t.Log("Original:", b)
+            t.Log("Encoded: ", b.Hex())
+            t.Log("Decoded: ", b2)
+            t.FailNow()
+        }
+    }
+}
+
+func TestRawHex (t *testing.T) {
+    for i := 0; i < 1000; i++ {
+        h  := randBits().RawHex()
+        h2 := FromRawHex(h).RawHex()
+
+        if h2 != h {
+            t.Log("Original:", h)
+            t.Log("Encoded: ", FromRawHex(h))
+            t.Log("Decoded: ", h2)
+            t.FailNow()
+        }
+    }
+}
+
 func TestChunks (t *testing.T) {
     for i := 0; i < 1000; i++ {
         c     := []*Bits{randBits(), randBits(), randBits()}
@@ -107,21 +150,6 @@ func TestList (t *testing.T) {
             t.Log("Decoded 0:", c3[0].Bin())
             t.Log("Decoded 1:", c3[1].Bin())
             t.Log("Decoded 2:", c3[2].Bin())
-            t.FailNow()
-        }
-    }
-}
-
-func TestByte (t *testing.T) {
-    for i := 0; i < 1000; i++ {
-        x  := randBits()
-        b  := x.Bytes()
-        x2 := FromBytes(b)
-
-        if !x2.Equal(x) {
-            t.Log("Original:", x)
-            t.Log("Encoded: ", b)
-            t.Log("Decoded: ", x2)
             t.FailNow()
         }
     }
