@@ -258,7 +258,6 @@ func (bits *Bits) readHeader (head int) (start int, end int, err error) {
 }
 
 func createHeader (length int) *Bits {
-    if length < 0 { panic(errors.New("Encoding error: negative length")) }
-    if length > 255 { panic(errors.New("Encoding error: that's just too fucking long")) }
+    if length < 0 { panic(errors.New("Encoding error: cannot create header with negative length")) }
     return FromInt(numBits(length)).PadLeft(8).Plus(FromInt(length))
 }
