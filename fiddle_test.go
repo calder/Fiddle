@@ -1,5 +1,6 @@
 package fiddle
 
+import "math/big"
 import "math/rand"
 import "testing"
 import "time"
@@ -20,6 +21,21 @@ func TestInt (t *testing.T) {
         x2 := b.Int()
 
         if x2 != x {
+            t.Log("Original:", x)
+            t.Log("Encoded: ", b)
+            t.Log("Decoded: ", x2)
+            t.FailNow()
+        }
+    }
+}
+
+func TestBigInt (t *testing.T) {
+    for i := 0; i < 1000; i++ {
+        x  := big.NewInt(int64(rand.Int())); x.Mul(x,x); x.Mul(x,x)
+        b  := FromBigInt(x)
+        x2 := b.BigInt()
+
+        if x2.Cmp(x) != 0 {
             t.Log("Original:", x)
             t.Log("Encoded: ", b)
             t.Log("Decoded: ", x2)

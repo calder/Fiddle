@@ -3,6 +3,7 @@ package fiddle
 import "bytes"
 import "encoding/hex"
 import "errors"
+import "math/big"
 import "strconv"
 import "strings"
 
@@ -55,24 +56,6 @@ func FromBin (s string) *Bits {
     return b
 }
 
-func FromChunks (chunks ...*Bits) *Bits {
-    if len(chunks) == 0 { return Nil() }
-    b := Nil()
-    for i := range chunks[:len(chunks)-1] {
-        b = b.Plus(createHeader(chunks[i].len)).Plus(chunks[i])
-    }
-    return b.Plus(chunks[len(chunks)-1])
-}
-
-func FromList (list []*Bits) *Bits {
-    if len(list) == 0 { return Nil() }
-    b := Nil()
-    for i := range list[:len(list)] {
-        b = b.Plus(createHeader(list[i].len)).Plus(list[i])
-    }
-    return b
-}
-
 func FromHex (s string) *Bits {
     b, e := hex.DecodeString(s)
     if e != nil { panic(e) }
@@ -93,9 +76,37 @@ func FromInt (x int) *Bits {
     return FromBin(s)
 }
 
+func FromBigInt (x *big.Int) *Bits {
+    bitLen  := x.BitLen()
+    byteLen := (bitLen + 7) / 8
+    bits := &Bits{make([]byte, byteLen), bitLen}
+    for d := 0; d < bitLen; d++ {
+        bits.dat[d/8] |= byte(x.Bit(bitLen-d-1) << uint(7-d%8))
+    }
+    return bits
+}
+
 func FromUnicode (s string) *Bits {
     b := []byte(s)
     return &Bits{b, 8*len(b)}
+}
+
+func FromChunks (chunks ...*Bits) *Bits {
+    if len(chunks) == 0 { return Nil() }
+    b := Nil()
+    for i := range chunks[:len(chunks)-1] {
+        b = b.Plus(createHeader(chunks[i].len)).Plus(chunks[i])
+    }
+    return b.Plus(chunks[len(chunks)-1])
+}
+
+func FromList (list []*Bits) *Bits {
+    if len(list) == 0 { return Nil() }
+    b := Nil()
+    for i := range list[:len(list)] {
+        b = b.Plus(createHeader(list[i].len)).Plus(list[i])
+    }
+    return b
 }
 
 /*************************
@@ -188,6 +199,12 @@ func (bits *Bits) Int () int {
     x, e := strconv.ParseInt(s, 2, 64)
     if e != nil { panic(e) }
     return int(x)
+}
+
+func (bits *Bits) BigInt () *big.Int {
+    x := big.NewInt(0)
+    x.SetString(bits.Bin(), 2)
+    return x
 }
 
 func (bits *Bits) Unicode () string {
