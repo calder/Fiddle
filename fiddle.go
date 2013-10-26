@@ -228,15 +228,15 @@ func (bits *Bits) Chunks (num int) []*Bits {
     return chunks
 }
 
-func (bits *Bits) List () (list []*Bits, err error) {
-    list = []*Bits{}
+func (bits *Bits) List () []*Bits {
+    list := make([]*Bits, 0)
     for head := 0; head < bits.len; {
         s, e, err := bits.readHeader(head)
-        if err != nil { return nil, err }
+        if err != nil { panic(err) }
         list = append(list, bits.FromTo(s, e))
         head = e
     }
-    return list, nil
+    return list
 }
 
 /******************
